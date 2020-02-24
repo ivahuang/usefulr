@@ -1,0 +1,504 @@
+---
+title: "STA135 Final Project"
+author: "Iva Huang"
+date: "2019Äê6ÔÂ8ÈÕ"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+
+##1. Introduction
+This document demonstrates my statistical analysis plan on dataset "Offer" and the corresponding results. It is designed to provide organized details on my rationale behind the anaysis plan, on concrete steps of the analysis plan, and on the interpretation of the resulting statistical decisions.
+
+
+##2. Analysis Plan
+The arugument that GPA and GMAT scores cannot decide for your application to business school has been prevalent, instead, other personal attributes like leadership skills and internship experiences are considered more crucial here. To answer if GPA and GMAT relate to specific admission results, I used the dataset "Offer".
+
+"Offer" contains the admission data for a graduate school of business and is presented on the textbook as Table 11.6. Subjects were sampled from three categories: Admitted, Borderlined(waitlisted) and Rejected. The GPA and GMAT score at the time of application were recorded for each subject.
+
+Assuming the sample is random, I used
+1) one-sample and two-sample Hotelling \(T^2\) to make inferences on the difference in GPA and GMAT between groups
+2) PCA to 
+3) LDA to
+
+
+##2 Summary: Summarize your data. These can be plots, or sample estimates. Interpret the
+plots and/or estimates.
+
+##3. Descriptive Summary of Data
+###3.1 Descriptive Statistics
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+library(ggplot2)
+library(car)
+
+setwd("C:/Users/hypiv/Desktop")
+offer = read.csv("Offer.csv")
+
+group_nis = by(offer$GPA, offer$Status, length)
+group_mean = by(offer$GPA, offer$Status , mean)
+group_mean2 = by(offer$GMAT,offer$Status, mean)
+group_sd = by(offer$GPA, offer$Status, sd)
+group_sd2 = by(offer$GMAT, offer$Status, sd)
+group_median = by(offer$GPA, offer$Status,median)
+group_median2 = by(offer$GMAT, offer$Status,median)
+group_max = by(offer$GPA, offer$Status, max)
+group_max2 = by(offer$GMAT, offer$Status, max)
+group_min = by(offer$GPA, offer$Status, min)
+group_min2 = by(offer$GMAT, offer$Status, min)
+the.summary = rbind(group_nis,group_mean,group_mean2, group_sd,group_sd2, group_median,group_median2, group_max,group_max2, group_min,group_min2)
+colnames(the.summary) = c("Admit", "Borderline", "Reject")
+rownames(the.summary) = c("Group Sample Size","Group Mean GPA","Group Mean GMAT", "Group Standard Deviation for GPA", "Group Standard Deviation for GMAT", "Group Median GPA", "Group Median GMAT", "Group Max GPA","Group Max GMAT", "Group Min GPA", "Group Min GMAT")
+M = kable(the.summary, caption = "Sample Mean & Standard Deviation", digits = 4)
+kableExtra::kable_styling(M)
+total_mean = mean(offer$GPA)
+total_mean2 = mean(offer$GMAT)
+total_sd = sd(offer$GPA)
+total_sd2 = sd(offer$GMAT)
+size = length(offer$GPA)
+results = rbind(total_mean,total_mean2,total_sd,total_sd2, size)
+rownames(results) = c("Total Mean for GPA", "Total Mean for GMAT","Total Standard Deviation for GPA","Total Standard Deviation for GMAT" ,"Total Sample Size")
+L = kable(results, digits = 4)
+kableExtra::kable_styling(L)
+```
+
+
+From the summary table, we can see that:
+
+1) \(\bar{X}_(admit)\) and \(median{X}_(admit)\)is much higher than the other two groups (for both GPA and GMAT). This suggests that a significant difference may exist between the "Admit"" group and overall mean, and that there may be a cutoff in GPA and GMAT for business school admission.
+2) There is a consistent pattern when comparing GPA for \( \bar{X}_(borderline)\) and  \(\bar{X}_(reject)\), with "Borderline" group always having higher GPA. However, the "Reject" group has higher mean GMAT, so that no clear suggestions can be presented here.
+
+3) The standard deviations of "Admit" group is the highest for both GPA and GMAT, suggesting that the cutoff for admission in scores may not be super high, leaving room for variation; The "Borderline" group has the lowest variance for both GPA and GMAT, suggesting that probably graduate school like to give waitlist letter to a specfic range of GPA and GMAT scores.
+
+###3.2 Empirical Distribution of the response variable
+```{r, echo=FALSE}
+ggplot(offer, aes(x = GPA)) + 
+  geom_histogram(color = "black",fill = "white") + 
+  facet_grid(Status ~.) +
+  ggtitle("Hitogram for GPA by Admission Status") +
+  xlab("GPA (out of 4.0)") +
+  ylab("Frequency/Count")
+
+ggplot(offer, aes(x = GMAT)) + 
+  geom_histogram(color = "black",fill = "white") + 
+  facet_grid(Status ~.) +
+  ggtitle("Hitogram for GMAT by Admission Status") +
+  xlab("GMAT") +
+  ylab("Frequency/Count")
+```
+The histogram confirms our suggestion made from summary statistics. Both distributions of "Admit" group are distant from the other two groups; and for the distribution of GPA, "Borderline" and "Reject" groups have different distributions.
+
+
+```{r, echo = FALSE}
+
+
+ggplot(offer, aes(y = GPA, x = Status)) + 
+  geom_boxplot() +
+  ggtitle("Boxplot for GPA by Admission Status") +
+  ylab("GPA (out of 4.0)") +
+  xlab("Admission Status")
+
+ggplot(offer, aes(y = GMAT, x = Status)) + 
+  geom_boxplot() +
+  ggtitle("Boxplot for GMAT by Admission Status") +
+  ylab("GMAT") +
+  xlab("Admission Status")
+
+
+```
+
+The boxplot shows us a clearer five number summary of each distribution. 
+
+First, for distribution of GPA, \(median_A > median_B >median_R\), so are the lower and upper 25th percentiles. The range of three groups seem to be approximately equal, with "Borderline" group having outliers. Most of the admitted students have around 3.25-3.5 GPA, whereas students who are waitlisted or rejected have more dispersed scores.
+
+For the distribution of GMAT, we can tell that again, "Borderline" and "Reject" groups are not particularly different. "Borderline" group have outliers again, but other data in the group seems to be less dispersed than "Reject" group.
+
+It will require multivariate hypothesis testing to evaluate the differences fully, which I incorporated in the next part.
+
+
+
+##4. Multivariate Hypothesis Test and Inferental Analysis
+I will first conduct hypothesis testing and confidence for each group mean vector using Hotelling \(T^2\), and then choose the ones who are significantly different from the overall mean to conduct two-sample testing.
+Finally, I will use confidence intervals to check whether both variates are significantly different between the two groups.
+
+### 4.1 One-Sample Hotelling¡¯s T Test
+
+
+```{r}
+
+# One-sample inference about a mean vector
+#  Compute sample mean vector and sample covariance matrix 
+
+barA <- colMeans(offer[1:32, 1:2])
+
+varA <- var(offer[1:32, 1:2])
+
+
+barR <- colMeans(offer[33:60, 1:2])
+
+varR <- var(offer[33:60, 1:2])
+
+
+barB <- colMeans(offer[61:86, 1:2], na.rm = TRUE)
+
+varB <- var(offer[61:86, 1:2],na.rm = TRUE)
+
+# Compute Hotelling statistic
+
+o = rbind(barA,varA)
+o = kable(o, digits = 4)
+o <- kableExtra::kable_styling(o, repeat_header_text = "mean vector and sample covariance matrix for group Admit")
+
+
+u = rbind(barB, varB)
+u = kable(u, digits = 4)
+u = kableExtra::kable_styling(u,repeat_header_text = "mean vector and sample covariance matrix for group Admit")
+
+
+r = rbind(barR,varR)
+r = kable(r, digits = 4)
+r = kableExtra::kable_styling(r, repeat_header_text = "mean vector and sample covariance matrix for group Admit")
+
+ 
+nullmean <- c(2.974588, 488.4471)
+o
+u
+r
+
+
+
+```
+First, I calculated the sample mean and covariance structure for each group.
+I then conducted three one-sample multivariate hypothesis tests using Hotelling \(T^2\).
+The null hypothese are:
+1) \(H_o:\bar{X}_A=\bar{X}\)
+2)\(H_o:\bar{X}_A=\bar{X}\)
+3)\(H_o:\bar{X}_A=\bar{X}\)
+
+```{r}
+library(ICSNP)
+
+Ta = HotellingsT2(X = offer[1:32, 1:2], mu = nullmean)
+Tr= HotellingsT2(X = offer[33:60, 1:2], mu = nullmean,na.action=na.exclude)
+Tb = HotellingsT2(X = offer[61:86, 1:2], mu = nullmean,na.action=na.exclude)
+
+
+result = rbind(Ta, Tb, Tr)
+rownames(result) = c("Admit", "Borderline", "Rejected")
+l = kable(result, digits = 4)
+kableExtra::kable_styling(l)
+```
+From the above test results, since all p-values are lower than any common \(alpha\), we reject all three null hypotheses and conclude that all group means are significantly different from overall sample mean.
+
+###4.2 Confidence Region for three groups
+```{r}
+# Confidence Region
+data1 <- offer[1:32, 1:2]
+data2 <- offer[33:60, 1:2]
+
+
+conf.reg<-function(xdata,alpha){
+  if(ncol(xdata)!=2) stop("Only for bivariate normal")
+  n<-nrow(xdata)
+  xbar<-colMeans(xdata)
+  S<-cov(xdata,use = "complete.obs")
+  es<-eigen(S)
+  e1<-es$vec %*% diag(sqrt(es$val))
+  r1<-sqrt(qf(alpha,2,n-2))*sqrt(2*(n-1)/(n*(n-2)))
+  theta<-seq(0,2*pi,len=250)
+  v1<-cbind(r1*cos(theta), r1*sin(theta))
+  pts<-t(xbar-(e1%*%t(v1)))
+  plot(pts,type="l",main="Confidence Region - Admit",xlab=colnames(xdata)[1],ylab=colnames(xdata)[2],asp=0.005)
+  segments(0,xbar[2],xbar[1],xbar[2],lty=2) # highlight the center
+  segments(xbar[1],0,xbar[1],xbar[2],lty=2)
+  
+  th2<-c(0,pi/2,pi,3*pi/2,2*pi)   #adding the axis
+  v2<-cbind(r1*cos(th2), r1*sin(th2))
+  pts2<-t(xbar-(e1%*%t(v2)))
+  
+  segments(pts2[3,1],pts2[3,2],pts2[1,1],pts2[1,2],lty=3)  
+  segments(pts2[2,1],pts2[2,2],pts2[4,1],pts2[4,2],lty=3)
+  
+}
+
+conf.reg(data1,alpha=0.95)
+conf.reg<-function(xdata,alpha){
+  if(ncol(xdata)!=2) stop("Only for bivariate normal")
+  n<-nrow(xdata)
+  xbar<-colMeans(xdata)
+  S<-cov(xdata)
+  es<-eigen(S)
+  e1<-es$vec %*% diag(sqrt(es$val))
+  r1<-sqrt(qf(alpha,2,n-2))*sqrt(2*(n-1)/(n*(n-2)))
+  theta<-seq(0,2*pi,len=250)
+  v1<-cbind(r1*cos(theta), r1*sin(theta))
+  pts<-t(xbar-(e1%*%t(v1)))
+  plot(pts,type="l",main="Confidence Region - Borderline",xlab=colnames(xdata)[1],ylab=colnames(xdata)[2],asp=0.005)
+  segments(0,xbar[2],xbar[1],xbar[2],lty=2) # highlight the center
+  segments(xbar[1],0,xbar[1],xbar[2],lty=2)
+  
+  th2<-c(0,pi/2,pi,3*pi/2,2*pi)   #adding the axis
+  v2<-cbind(r1*cos(th2), r1*sin(th2))
+  pts2<-t(xbar-(e1%*%t(v2)))
+  
+  segments(pts2[3,1],pts2[3,2],pts2[1,1],pts2[1,2],lty=3)  
+  segments(pts2[2,1],pts2[2,2],pts2[4,1],pts2[4,2],lty=3)
+  
+}
+data3 <- offer[61:85, 1:2]
+conf.reg(data3,alpha=0.95)
+conf.reg<-function(xdata,alpha){
+  if(ncol(xdata)!=2) stop("Only for bivariate normal")
+  n<-nrow(xdata)
+  xbar<-colMeans(xdata)
+  S<-cov(xdata,use = "complete.obs")
+  es<-eigen(S)
+  e1<-es$vec %*% diag(sqrt(es$val))
+  r1<-sqrt(qf(alpha,2,n-2))*sqrt(2*(n-1)/(n*(n-2)))
+  theta<-seq(0,2*pi,len=250)
+  v1<-cbind(r1*cos(theta), r1*sin(theta))
+  pts<-t(xbar-(e1%*%t(v1)))
+  plot(pts,type="l",main="Confidence Region - Reject",xlab=colnames(xdata)[1],ylab=colnames(xdata)[2],asp=0.005)
+  segments(0,xbar[2],xbar[1],xbar[2],lty=2) # highlight the center
+  segments(xbar[1],0,xbar[1],xbar[2],lty=2)
+  
+  th2<-c(0,pi/2,pi,3*pi/2,2*pi)   #adding the axis
+  v2<-cbind(r1*cos(th2), r1*sin(th2))
+  pts2<-t(xbar-(e1%*%t(v2)))
+  
+  segments(pts2[3,1],pts2[3,2],pts2[1,1],pts2[1,2],lty=3)  
+  segments(pts2[2,1],pts2[2,2],pts2[4,1],pts2[4,2],lty=3)
+  
+}
+conf.reg(data2,alpha=0.95)
+
+
+
+```
+Three 95% confidence regions were calculated above.
+
+Interpretation for each of the confidence ellipse:
+
+*Given that we assume there is an underlying population mean GPA and GMAT for each of the grops, if we were to repeat the sampling procedure for many times, we are confident that the true population mean vector for the corresponding group is covered by the confidence ellipse, 95% of the times.*
+
+
+
+
+
+```{r}
+# Compute 95% simultaneous confidence intervals for the two mean values
+p<-ncol(data1)
+n<-nrow(data1)
+S<-cov(data1)
+xbar<-colMeans(data1)
+mu1.L=xbar[1]-sqrt(((n-1)*p/(n-p))*qf(0.95,p,n-p))*sqrt(S[1,1]/n)
+mu1.U=xbar[1]+sqrt(((n-1)*p/(n-p))*qf(0.95,p,n-p))*sqrt(S[1,1]/n)
+mu2.L=xbar[2]-sqrt(((n-1)*p/(n-p))*qf(0.95,p,n-p))*sqrt(S[2,2]/n)
+mu2.U=xbar[2]+sqrt(((n-1)*p/(n-p))*qf(0.95,p,n-p))*sqrt(S[2,2]/n)
+e1 = c(mu1.L,mu1.U)
+e2 = c(mu2.L,mu2.U)
+e = rbind(e1, e2)
+rownames(e) = c("GPA(A)", "GMAT(A)")
+colnames(e) = c("Lower Bound", "Upper Bound")
+e = kable(e, digits = 4)
+kableExtra::kable_styling(e)
+
+# Compute 95% Bonferroni confidence intervals for the two mean values
+mu1.LB=xbar[1]-qt(0.05/(2*p),n-1,lower.tail=F)*sqrt(S[1,1]/n)
+mu1.UB=xbar[1]+qt(0.05/(2*p),n-1,lower.tail=F)*sqrt(S[1,1]/n)
+mu2.LB=xbar[2]-qt(0.05/(2*p),n-1,lower.tail=F)*sqrt(S[2,2]/n)
+mu2.UB=xbar[2]+qt(0.05/(2*p),n-1,lower.tail=F)*sqrt(S[2,2]/n)
+c(mu1.LB,mu1.UB)
+c(mu2.LB,mu2.UB)
+e1 = c(mu1.LB,mu1.UB)
+e2 = c(mu2.LB,mu2.UB)
+e = rbind(e1, e2)
+rownames(e) = c("GPA(A)(Bon)", "GMAT(A)(Bon)")
+colnames(e) = c("Lower Bound", "Upper Bound")
+e = kable(e, digits = 4)
+kableExtra::kable_styling(e)
+
+
+
+# Compute 95% simultaneous confidence intervals for the two mean values
+p<-ncol(data3)
+n<-nrow(data3)
+S<-cov(data3)
+xbar<-colMeans(data3)
+mu1.L=xbar[1]-sqrt(((n-1)*p/(n-p))*qf(0.95,p,n-p))*sqrt(S[1,1]/n)
+mu1.U=xbar[1]+sqrt(((n-1)*p/(n-p))*qf(0.95,p,n-p))*sqrt(S[1,1]/n)
+mu2.L=xbar[2]-sqrt(((n-1)*p/(n-p))*qf(0.95,p,n-p))*sqrt(S[2,2]/n)
+mu2.U=xbar[2]+sqrt(((n-1)*p/(n-p))*qf(0.95,p,n-p))*sqrt(S[2,2]/n)
+e1 = c(mu1.L,mu1.U)
+e2 = c(mu2.L,mu2.U)
+e = rbind(e1, e2)
+rownames(e) = c("GPA(B)", "GMAT(B)")
+colnames(e) = c("Lower Bound", "Upper Bound")
+e = kable(e, digits = 4)
+kableExtra::kable_styling(e)
+# Compute 95% simultaneous confidence intervals for the two mean values
+p<-ncol(data2)
+n<-nrow(data2)
+S<-cov(data2)
+xbar<-colMeans(data3)
+mu1.L=xbar[1]-sqrt(((n-1)*p/(n-p))*qf(0.95,p,n-p))*sqrt(S[1,1]/n)
+mu1.U=xbar[1]+sqrt(((n-1)*p/(n-p))*qf(0.95,p,n-p))*sqrt(S[1,1]/n)
+mu2.L=xbar[2]-sqrt(((n-1)*p/(n-p))*qf(0.95,p,n-p))*sqrt(S[2,2]/n)
+mu2.U=xbar[2]+sqrt(((n-1)*p/(n-p))*qf(0.95,p,n-p))*sqrt(S[2,2]/n)
+e1 = c(mu1.L,mu1.U)
+e2 = c(mu2.L,mu2.U)
+e = rbind(e1, e2)
+rownames(e) = c("GPA(R)", "GMAT(R)")
+colnames(e) = c("Lower Bound", "Upper Bound")
+e = kable(e, digits = 4)
+kableExtra::kable_styling(e)
+
+# Compute 95% Bonferroni confidence intervals for the two mean values
+mu1.LB=xbar[1]-qt(0.05/(2*p),n-1,lower.tail=F)*sqrt(S[1,1]/n)
+mu1.UB=xbar[1]+qt(0.05/(2*p),n-1,lower.tail=F)*sqrt(S[1,1]/n)
+mu2.LB=xbar[2]-qt(0.05/(2*p),n-1,lower.tail=F)*sqrt(S[2,2]/n)
+mu2.UB=xbar[2]+qt(0.05/(2*p),n-1,lower.tail=F)*sqrt(S[2,2]/n)
+c(mu1.LB,mu1.UB)
+c(mu2.LB,mu2.UB)
+e1 = c(mu1.LB,mu1.UB)
+e2 = c(mu2.LB,mu2.UB)
+e = rbind(e1, e2)
+rownames(e) = c("GPA(B)(Bon)", "GMAT(B)(Bon)")
+colnames(e) = c("Lower Bound", "Upper Bound")
+e = kable(e, digits = 4)
+kableExtra::kable_styling(e)
+
+# Compute 95% simultaneous confidence intervals for the two mean values
+p<-ncol(data2)
+n<-nrow(data2)
+S<-cov(data2)
+xbar<-colMeans(data3)
+mu1.L=xbar[1]-sqrt(((n-1)*p/(n-p))*qf(0.95,p,n-p))*sqrt(S[1,1]/n)
+mu1.U=xbar[1]+sqrt(((n-1)*p/(n-p))*qf(0.95,p,n-p))*sqrt(S[1,1]/n)
+mu2.L=xbar[2]-sqrt(((n-1)*p/(n-p))*qf(0.95,p,n-p))*sqrt(S[2,2]/n)
+mu2.U=xbar[2]+sqrt(((n-1)*p/(n-p))*qf(0.95,p,n-p))*sqrt(S[2,2]/n)
+e1 = c(mu1.L,mu1.U)
+e2 = c(mu2.L,mu2.U)
+e = rbind(e1, e2)
+rownames(e) = c("GPA(R)", "GMAT(R)")
+colnames(e) = c("Lower Bound", "Upper Bound")
+e = kable(e, digits = 4)
+kableExtra::kable_styling(e)
+
+# Compute 95% Bonferroni confidence intervals for the two mean values
+mu1.LB=xbar[1]-qt(0.05/(2*p),n-1,lower.tail=F)*sqrt(S[1,1]/n)
+mu1.UB=xbar[1]+qt(0.05/(2*p),n-1,lower.tail=F)*sqrt(S[1,1]/n)
+mu2.LB=xbar[2]-qt(0.05/(2*p),n-1,lower.tail=F)*sqrt(S[2,2]/n)
+mu2.UB=xbar[2]+qt(0.05/(2*p),n-1,lower.tail=F)*sqrt(S[2,2]/n)
+c(mu1.LB,mu1.UB)
+c(mu2.LB,mu2.UB)
+e1 = c(mu1.LB,mu1.UB)
+e2 = c(mu2.LB,mu2.UB)
+e = rbind(e1, e2)
+rownames(e) = c("GPA(R)(Bon)", "GMAT(R)(Bon)")
+colnames(e) = c("Lower Bound", "Upper Bound")
+e = kable(e, digits = 4)
+kableExtra::kable_styling(e)
+
+
+
+```
+
+
+
+95% simultaneous confidence intervals for each group were calculated group using Hotelling's T and Bonforroni Correction.
+
+*We are overall 95% confident that, both the true GPA and the true population GMAT for each group are covered in the corresponding simultaneous confidence intervals 95% of the time. *
+
+There are differences between the results given by the two methods, since Hotelling's T used F distribution whereas Bonforroni Correction adjusts T distribution. Bonferroni gives narrower confidence intervals since g = 2 in our case, i.e. Bonferroni only changes \(\alpha\) by a bit.
+
+
+
+
+### 4.3 Two-Sample Hotelling¡¯s T Test
+(a) Construct simultaneous confidence intervals based on T
+2 and Bonferroni correction.
+
+
+(b) Two-sample 
+2
+test.
+
+
+```{r}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#### two-sample Hotelling's T2 test  -------
+
+Setosa <- iris[iris$Species == "setosa",-5]
+Versicolor <- iris[iris$Species == "versicolor",-5]
+
+# now we perform the two-sample Hotelling T^2-test
+
+HotellingsT2(Setosa, Versicolor)
+
+n<-c(50,50)
+p<-4
+xmean1<-colMeans(Setosa)
+xmean2<-colMeans(Versicolor)
+d<-xmean1-xmean2
+S1<-var(Setosa)
+S2<-var(Versicolor)
+Sp<-((n[1]-1)*S1+(n[2]-1)*S2)/(sum(n)-2)
+t2 <- t(d)%*%solve(sum(1/n)*Sp)%*%d
+t2
+alpha<-0.05
+cval <- (sum(n)-2)*p/(sum(n)-p-1)*qf(1-alpha,p,sum(n)-p-1)
+cval
+
+# since we reject the null, we use the simultaneous confidence intervals
+# to check the significant components
+
+# simultaneous confidence intervals
+alpha<-0.05
+wd<-sqrt(((n[1]+n[2]-2)*p/(n[1]+n[2]-p-1))*qf(1-alpha,p,n[1]+n[2]-p-1))*sqrt(diag(Sp)*sum(1/n))
+Cis<-cbind(d-wd,d+wd)
+cat("95% simultaneous confidence interval","\n")
+Cis
+
+#Bonferroni simultaneous confidence intervals
+wd.b<- qt(1-alpha/(2*p),n[1]+n[2]-2) *sqrt(diag(Sp)*sum(1/n))
+Cis.b<-cbind(d-wd.b,d+wd.b)
+cat("95% Bonferroni simultaneous confidence interval","\n")
+Cis.b
+
+# both component-wise simultaneous confidence intervals do not contain 0, so they have significant differences. 
+
+
+## code credit to Weiping Zhang(USTC)
+          
+
+
+```
+
+
+
+(c) Principal component analysis.
+(d) Linear discriminant analysis.
+4 Interpretation: Interpret your confidence intervals, tests and plots in terms of the problem.
+5 Conclusion: Describe and interpret your findings.
