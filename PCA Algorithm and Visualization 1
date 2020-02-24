@@ -1,7 +1,7 @@
 ---
 title: "STA135 Final Project"
 author: "Iva Huang"
-date: "2019Äê6ÔÂ8ÈÕ"
+date: "2019Ã„Ãª6Ã”Ã‚8ÃˆÃ•"
 output: pdf_document
 ---
 
@@ -128,7 +128,7 @@ It will require multivariate hypothesis testing to evaluate the differences full
 I will first conduct hypothesis testing and confidence for each group mean vector using Hotelling \(T^2\), and then choose the ones who are significantly different from the overall mean to conduct two-sample testing.
 Finally, I will use confidence intervals to check whether both variates are significantly different between the two groups.
 
-### 4.1 One-Sample Hotelling¡¯s T Test
+### 4.1 One-Sample HotellingÂ¡Â¯s T Test
 
 
 ```{r}
@@ -422,7 +422,7 @@ There are differences between the results given by the two methods, since Hotell
 
 
 
-### 4.3 Two-Sample Hotelling¡¯s T Test
+### 4.3 Two-Sample HotellingÂ¡Â¯s T Test
 (a) Construct simultaneous confidence intervals based on T
 2 and Bonferroni correction.
 
